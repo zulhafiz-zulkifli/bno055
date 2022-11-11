@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """
 Copyright (c) 2020 Robotic Arts Industries
@@ -42,6 +42,7 @@ import serial #pyserial
 import math
 import time
 import sys, os
+import struct
 
 # Enable print to debug
 ENABLE_DEBUG = False
@@ -743,10 +744,19 @@ class BoschIMU:
         # Get quaternion orientation vector data
         response = self.raw_quaternion
         
-        raw_quaternion_w = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_quaternion_x = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_quaternion_y = int.from_bytes(response[4:6], 'little',  signed= True) 
-        raw_quaternion_z = int.from_bytes(response[6:8], 'little',  signed= True) 
+        raw_quaternion_w = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_quaternion_x = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_quaternion_y = self.from_bytes(response[4:6], 'little',  signed= True) 
+        raw_quaternion_z = self.from_bytes(response[6:8], 'little',  signed= True)
+        # raw_quaternion_w = struct.unpack('<{}f'.format(len(response[0:2])), bytearray(response[0:2]))
+        #struct.unpack('{}B'.format(len(foo)), foo)
+        # raw_quaternion_x = struct.unpack('<{}f'.format(len(response[2:4])), bytearray(response[2:4]))
+        # raw_quaternion_y = struct.unpack('<{}f'.format(len(response[4:6])), bytearray(response[4:6]))
+        # raw_quaternion_z = struct.unpack('<{}f'.format(len(response[6:8])), bytearray(response[6:8]))
+        # print(raw_quaternion_w)
+        # print(raw_quaternion_x)
+        # print(raw_quaternion_y)
+        # print(raw_quaternion_z)
         
         # No conversion needed
         quaternion_w = raw_quaternion_w
@@ -761,6 +771,19 @@ class BoschIMU:
 
         return quaternion_w, quaternion_x, quaternion_y, quaternion_z
 
+    def from_bytes(self, bytes, byteorder='big', signed=False):
+        if byteorder == 'little':
+            little_ordered = list(bytes)
+        elif byteorder == 'big':
+            little_ordered = list(reversed(bytes))
+        else:
+            raise ValueError("byteorder must be either 'little' or 'big'")
+
+        n = sum(b << i*8 for i, b in enumerate(little_ordered))
+        if signed and little_ordered and (little_ordered[-1] & 0x80):
+            n -= 1 << 8*len(little_ordered)
+
+        return n
 
     def get_euler_orientation(self):
 
@@ -768,9 +791,9 @@ class BoschIMU:
         response = self.raw_euler
 
         # Get  euler orientation axis data
-        raw_euler_x = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_euler_y = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_euler_z = int.from_bytes(response[4:6], 'little',  signed= True)
+        raw_euler_x = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_euler_y = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_euler_z = self.from_bytes(response[4:6], 'little',  signed= True)
 
         if self.euler_orientation_units == RAD:
             # Convert values to an appropriate range (section 3.6.4)
@@ -802,9 +825,9 @@ class BoschIMU:
         response = self.raw_gyroscope
 
         # Get gyroscope axis data
-        raw_gyroscope_x = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_gyroscope_y = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_gyroscope_z = int.from_bytes(response[4:6], 'little',  signed= True)
+        raw_gyroscope_x = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_gyroscope_y = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_gyroscope_z = self.from_bytes(response[4:6], 'little',  signed= True)
 
         if self.angular_velocity_units == RAD_PER_SECOND:
             # Convert values to an appropriate range (section 3.6.4)
@@ -835,9 +858,9 @@ class BoschIMU:
         response = self.raw_linear_acceleration
 
         # Get linear acceleration axis data
-        raw_linear_acceleration_x = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_linear_acceleration_y = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_linear_acceleration_z = int.from_bytes(response[4:6], 'little',  signed= True)
+        raw_linear_acceleration_x = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_linear_acceleration_y = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_linear_acceleration_z = self.from_bytes(response[4:6], 'little',  signed= True)
 
         if self.acceleration_units == METERS_PER_SECOND:
             # Convert values to an appropriate range (section 3.6.4)
@@ -867,9 +890,9 @@ class BoschIMU:
         response = self.raw_magnetometer
 
         # Get magnetometer axis data
-        raw_magnetometer_x = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_magnetometer_y = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_magnetometer_z = int.from_bytes(response[4:6], 'little',  signed= True)
+        raw_magnetometer_x = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_magnetometer_y = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_magnetometer_z = self.from_bytes(response[4:6], 'little',  signed= True)
 
         # Convert values to an appropriate range (section 3.6.4)
         magnetometer_x = raw_magnetometer_x / MAGNETOMETER_SCALE
@@ -889,9 +912,9 @@ class BoschIMU:
         self.raw_gravity
 
         # Get gravity axis data
-        raw_gravity_x = int.from_bytes(response[0:2], 'little',  signed= True) 
-        raw_gravity_y = int.from_bytes(response[2:4], 'little',  signed= True) 
-        raw_gravity_z = int.from_bytes(response[4:6], 'little',  signed= True)
+        raw_gravity_x = self.from_bytes(response[0:2], 'little',  signed= True) 
+        raw_gravity_y = self.from_bytes(response[2:4], 'little',  signed= True) 
+        raw_gravity_z = self.from_bytes(response[4:6], 'little',  signed= True)
 
         if self.acceleration_units == METERS_PER_SECOND:
             # Convert values to an appropriate range (section 3.6.4)
@@ -922,7 +945,7 @@ class BoschIMU:
         response = self.raw_temperature
         
         # Get temperature data
-        raw_temperature = int.from_bytes(response[0:1], 'little',  signed= True) 
+        raw_temperature = self.from_bytes(response[0:1], 'little',  signed= True) 
        
         if self.temperature_units == CELSIUS:
             # No conversion needed
